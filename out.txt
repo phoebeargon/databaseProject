@@ -10,15 +10,15 @@ Table tbl_1 Created
 Table tbl_1 deleted.
 !Failed to delete Table tbl_1 because it does not exist.
 Table tbl_1 Created
-a1 int, a2 varchar
+a1 int, a2 varchar(20)
 Table tbl_1 modified.
-a1 int, a2 varchar, a3 float
+a1 int, a2 varchar(20), a3 float
 Table tbl_2 Created
-a3 float, a4 char
+a3 float, a4 char(20)
 using databasedb_2.
 !Failed to query table tbl_1 because it does not exist.
 Table tbl_1 Created
-a3 float, a4 char
+a3 float, a4 char(20)
 
 -- Expected output
 --
