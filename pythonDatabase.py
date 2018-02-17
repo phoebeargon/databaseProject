@@ -1,5 +1,5 @@
 """
-Authors: Paul Marshall & Phoebe Aargon
+Authors: Paul Marshall & Phoebe Argon
 Date: 2/17/18
 History:
     2/14/18 - Started, basic database metadata commands work
