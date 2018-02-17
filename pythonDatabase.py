@@ -30,7 +30,7 @@ try:
                 print "!Failed to delete database " + folder + " because it does not exist."
         elif "USE" in command:
             globalFolder = command.split("USE ")[1]
-            print "using database" + globalFolder + "."
+            print "Using database " + globalFolder + " ."
         elif "CREATE TABLE" in command:
             subFolder = command.split("CREATE TABLE ")[1]
             subFolder = subFolder.split(" (")[0]
@@ -40,7 +40,9 @@ try:
                 with open(fileName,"w") as table:
                     print "Table " + subFolder + " Created"
                     if "(" in command:
-                        data = command.split("(")[1]
+                        data = command.split("(",1)[1]
+                        data = data[:-1]
+                        print data
                         loopCount = data.count(",")
                         for x in range(0,loopCount-1):
                             data[x] = command.split(",")[x]
@@ -83,6 +85,7 @@ try:
             else:
                  print "!Failed to atler table " + tableName + " because it does not exist."
         elif ".EXIT" in command:
+            print "All done"
             exit()
                     
 
