@@ -1,0 +1,1 @@
+rate int | name varchar(20) | attr char

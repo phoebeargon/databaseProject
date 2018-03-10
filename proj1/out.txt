@@ -1,0 +1,78 @@
+
+ enter a command 
+
+ enter a command 
+
+ enter a command 
+
+ enter a command 
+Database db_1 created.
+
+ enter a command 
+!Failed to create database db_1 because it already exists
+
+ enter a command 
+Database db_2 created.
+
+ enter a command 
+Database db_2 deleted.
+
+ enter a command 
+!Failed to delete database db_2 because it does not exist
+
+ enter a command 
+Database db_2 created.
+
+ enter a command 
+
+ enter a command 
+
+ enter a command 
+Using database db_1 .
+
+ enter a command 
+Table tbl_1 created.
+
+ enter a command 
+!Failed to create table tbl_1 because it already exists
+
+ enter a command 
+Table tbl_1 deleted.
+
+ enter a command 
+!Failed to delete Table tbl_1 because it does not exist
+
+ enter a command 
+Table tbl_1 created.
+
+ enter a command 
+a1 int,  a2 varchar(20)
+
+ enter a command 
+Table tbl_1 modified.
+
+ enter a command 
+a1 int,  a2 varchar(20), a3 float
+
+ enter a command 
+Table tbl_2 created.
+
+ enter a command 
+a3 float,  a4 char(20)
+
+ enter a command 
+Using database db_2 .
+
+ enter a command 
+!Failed to query table tbl_1 because it does not exist
+
+ enter a command 
+Table tbl_1 created.
+
+ enter a command 
+a3 float,  a4 char(20)
+
+ enter a command 
+
+ enter a command 
+All done

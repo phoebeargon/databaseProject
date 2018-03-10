@@ -1,0 +1,1 @@
+fresh int,  name varchar(30),  effect int, texture varchar(10)
