@@ -12,16 +12,18 @@ try: #This will check the CTRL D command, and the EOF
     globalScopeDirectory = "" #Create here for increased scope
 
     while(True): #exit loop at EOF or .EXIT
-        
-        command = raw_input("\n enter a command \n") #Read input from terminal
-        
-        if ";" in command:
-            command = command[:-2] #Was running into weird chars at end of lines, so -1 gets rid of ; and -2 gets rid of those chars
-        
+
+        command = ""
+        while not ";" in command and not "--" in command:
+            command += raw_input("\n enter a command \n") #Read input from terminal
+
         if "--" in command: #Pass comments
             pass
-
-        elif "CREATE DATABASE" in command:
+        command = command[:-1] #Remove ; from command
+        commandUp = str(command) #Normalize input
+        commandUp = commandUp.upper()
+        #print "c: ", command, "\n cU: ", commandUp
+        if "CREATE DATABASE" in commandUp:
             try:
                 directory = command.split("CREATE DATABASE ")[1] #Store the string after CREATE DATABASE
                 if not os.path.exists(directory): #Only create if it doesn't exist
@@ -33,7 +35,7 @@ try: #This will check the CTRL D command, and the EOF
                 print "!No database name specified"
 
 
-        elif "DROP DATABASE" in command:
+        elif "DROP DATABASE" in commandUp:
             try:
                 directory = command.split("DROP DATABASE ")[1] #Store the string after DROP DATABASE
                 if os.path.exists(directory): #Ensure database exists
@@ -58,7 +60,7 @@ try: #This will check the CTRL D command, and the EOF
             except ValueError as err:
                 print err.args[0]
 
-        elif "CREATE TABLE" in command:
+        elif "CREATE TABLE" in commandUp:
             try:
                 useEnabled() #Ensure database is selected
                 subDirectory = command.split("CREATE TABLE ")[1] #Get string to use for table name
@@ -84,7 +86,7 @@ try: #This will check the CTRL D command, and the EOF
             except ValueError as err:
                 print err.args[0]
 
-        elif "DROP TABLE" in command:
+        elif "DROP TABLE" in commandUp:
             try:
                 useEnabled() #Ensure database is selected
                 subDirectory = command.split("DROP TABLE ")[1] #Get string to use for table name
@@ -100,7 +102,7 @@ try: #This will check the CTRL D command, and the EOF
             except ValueError as err:
                 print err.args[0]
 
-        elif "SELECT *" in command:
+        elif "SELECT *" in commandUp:
             try:
                 useEnabled() #Ensure database is selected
                 tableName = command.split("FROM ")[1] #Get string to use for table name
@@ -117,7 +119,7 @@ try: #This will check the CTRL D command, and the EOF
             except ValueError as err:
                 print err.args[0]
 
-        elif "ALTER TABLE" in command:
+        elif "ALTER TABLE" in commandUp:
             try:
                 useEnabled() #Ensure database is selected
                 tableName = command.split("ALTER TABLE ")[1]
@@ -137,11 +139,10 @@ try: #This will check the CTRL D command, and the EOF
             except ValueError as err:
                 print err.args[0]
 
-        elif "INSERT INTO" in command:
+        elif "INSERT INTO" in commandUp:
             try:
                 useEnabled() #Ensure database is selected
-                tableName = command.split("INSERT INTO ")[1] #Get string to use for table name
-                tableName = tableName.split(" ")[0]
+                tableName = command.split(" ")[2] #Get string to use for table name
                 workingDirectory = os.path.join(os.getcwd(),globalScopeDirectory)
                 fileName = os.path.join(workingDirectory,tableName)
                 if os.path.isfile(fileName):
@@ -153,6 +154,8 @@ try: #This will check the CTRL D command, and the EOF
                             loopCount = data.count(",") #Count the number of arguments
                             for x in range(loopCount+1):
                                 out.append(data.split(", ")[x]) #Import all arguments into list for printing and sorting later
+                                if "\"" == out[x][0] or "\'" == out[x][0]:
+                                    out[x] = out[x][1:-1]
                             table.write("\n")
                             table.write( " | ".join(out) ) #Output the array to a file
                             print "1 new record created."
@@ -165,7 +168,7 @@ try: #This will check the CTRL D command, and the EOF
             except ValueError as err:
                 print err.args[0]
 
-        elif "DELETE FROM" in command:
+        elif "DELETE FROM" in commandUp:
             try:
                 useEnabled() #Ensure database is selected
                 mainCount = 0
@@ -176,6 +179,7 @@ try: #This will check the CTRL D command, and the EOF
                 if os.path.isfile(fileName):
                     with open(fileName,"r+") as table:
                         data = table.readlines()
+                        out = list(data) #Can't modify data of for loop below
                         colIndex = data[0].split(" | ")
                         for x in range( len(colIndex) ):
                             colIndex[x] = colIndex[x].split(" ")[0]
@@ -183,7 +187,7 @@ try: #This will check the CTRL D command, and the EOF
                         if "=" in itemToDelete: #Figure out the operator for splitting command
                             relColumn = itemToDelete.split(" =")[0]
                             itemToDelete = itemToDelete.split("= ")[1]
-                            if "\"" in itemToDelete:
+                            if "\"" in itemToDelete or "\'" in itemToDelete: #Cleanup var
                                 itemToDelete = itemToDelete[1:-1]
                             for line in data: #Check each row
                                 lineCheck = line.split(" | ")
@@ -193,25 +197,28 @@ try: #This will check the CTRL D command, and the EOF
                                     colIndex = colIndex.index(relColumn)
                                     lineCheck = lineCheck.index(itemToDelete)
                                     if lineCheck == colIndex: #Check for proper column
-                                        del data[data.index(line)] #Remove matched field
+                                        del out[out.index(line)] #Remove matched field
                                         mainCount += 1
+                                        #print "DEBUG out: ", out
                         elif ">" in itemToDelete: #Figure out the operator for splitting command
                             relColumn = itemToDelete.split(" >")[0]
                             itemToDelete = itemToDelete.split("> ")[1]
-                            out = list(data) #Can't modify data of for loop below
                             for line in data: #Check each row
                                 lineCheck = line.split(" | ")
                                 for x in range( len(lineCheck) ): #Check each column item
                                     lineCheck[x] = lineCheck[x].split(" ")[0]
-                                    if lineCheck[x].isdigit(): #Only check numeric fields
-                                        lineCheck[x] = int(lineCheck[x])
-                                        if lineCheck[x] > int(itemToDelete): #Match query
+                                    try:
+                                        lineCheck[x] = float(lineCheck[x]) #Only check numeric fields
+                                        #lineCheck[x] = int(lineCheck[x])
+                                        if lineCheck[x] > float(itemToDelete): #Match query
                                             tempColIndex = colIndex.index(relColumn)
                                             #print "x: ", x, " colIndex: ", colIndex, " mainIndex: ", data.index(line)
                                             if x == tempColIndex: #Check for proper column
                                                 del out[out.index(line)] #Remove matched field
                                                 mainCount += 1
-                                                #print "mCL: ", mainCount
+                                    except ValueError:
+                                        continue
+
                         #elif "<" in itemToDelete: # Future implementation #
                             #relColumn = itemToDelete.split("<")[0]
                             #itemToDelete = itemToDelete.split("< ")[1]
@@ -229,7 +236,7 @@ try: #This will check the CTRL D command, and the EOF
                      print "!Failed to alter table " + tableName + " because it does not exist"
 
             except IndexError:
-                print "!Failed to insert into Table because no table name is specified"
+                print "!Failed to alter Table because no table name is specified"
             except ValueError as err:
                 print err.args[0]
 
