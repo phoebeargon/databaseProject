@@ -315,6 +315,7 @@ def updateFrom(command):
                 table.truncate()
 
                 for line in out:
+                    print line
                     table.write(line)
 
                 if mainCount > 0:
@@ -364,7 +365,7 @@ def where(argumentToFind, actionToApply, data, updateValue = ""):
                         attribute, field = updateValue.split(" = ")
                         if attribute in colNames:
                             splitLine = splitLines(line)
-                            splitLine[colNames.index(attribute)] = field
+                            splitLine[colNames.index(attribute)] = field.strip("'")
                             inData[inData.index(line)] = (' | ').join(splitLine)
                             out = inData
                             mainCount += 1
