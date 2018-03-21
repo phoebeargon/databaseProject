@@ -6,6 +6,7 @@ import os
 globalScopeDirectory = ""
 workingDirectory = ""
 
+
 def main():
     try:
         while (True):
@@ -16,6 +17,8 @@ def main():
             command = command[:-1]  # Remove ; from command
             commandUp = str(command)  # Normalize input
             commandUp = commandUp.upper()
+
+            #print command
 
             if "--" in command:  # Pass comments
                 pass
@@ -38,14 +41,17 @@ def main():
             elif "DELETE FROM" in commandUp:
                 deleteFrom(command)
 
-            elif "SELECT *" in commandUp:
-                selectCommand(command)
+            elif "SELECT" in commandUp:
+                selectCommand(command, commandUp)
 
             elif "ALTER TABLE" in commandUp:
                 alterTable(command)
 
             elif "INSERT INTO" in commandUp:
                 insertInto(command)
+
+            elif "UPDATE" in commandUp:
+                updateFrom(command)
 
             elif ".EXIT" in command:  # Exit if specified before EOF
                 print "All done"
@@ -144,24 +150,63 @@ def dropTable(command):
         else:
             print "!Failed to delete Table " + subDirectory + " because it does not exist"
     except IndexError:
-        print "!Failed to remove Talbe because no table name is specified"
+        print "!Failed to remove Table because no table name is specified"
     except ValueError as err:
         print err.args[0]
 
 
-def selectCommand(command):
+def selectCommand(command, commandUp):
     try:
+        #print command
         useEnabled()  # Ensure database is selected
         tableName = command.split("FROM ")[1]  # Get string to use for table name
+        if "WHERE" in commandUp:
+            tableName = tableName.split("WHERE")[0]
+
         fileName = os.path.join(workingDirectory, tableName)
+        output = ""
+
         if os.path.isfile(fileName):
             with open(fileName, "r+") as table:  # Since there should already be tables created, use r+
-                output = table.read()
-                print output
+                if "WHERE" in commandUp: #using the where to find the matches with all attributes
+                    itemToFind = command.split("WHERE ")[1]
+                    data = table.readlines()
+                    mainCount, output = where(itemToFind,"select",data)
+
+                if "SELECT *" in commandUp:
+                    if not output == "": #checks if output is allocatioed
+                        for line in output:
+                            print line
+                    else:
+                        output = table.read()
+                        print output
+
+                else: #if doesnt want all attributes, trim down output
+
+                    arguments = command.split("SELECT")[1]
+                    attributes = arguments.split("FROM")[0]
+                    attributes = attributes.split(",")
+
+
+                    if not output == "":  # checks if output is allocated
+                        lines = output
+                    else:
+                        lines = table.readlines()
+                        data = lines
+
+                    for line in lines:
+                        out = []
+                        for attribute in attributes:
+                            attribute = attribute.strip()
+                            colIndex = returnColIndex(data)
+                            if attribute in colIndex:
+                                splitLine = splitLines(line)
+                                out.append(splitLine[colIndex.index(attribute)].strip())
+                        print " | ".join(out)
         else:
             print "!Failed to query table " + tableName + " because it does not exist"
     except IndexError:
-        print "!Failed to remove Talbe because no table name is specified"
+        print "!Failed to remove Table because no table name is specified"
     except ValueError as err:
         print err.args[0]
 
@@ -215,66 +260,27 @@ def insertInto(command):
     except ValueError as err:
         print err.args[0]
 
+
 def deleteFrom(command):
     try:
         useEnabled()  # Ensure database is selected
-        mainCount = 0
         tableName = command.split("DELETE FROM ")[1]  # Get string to use for table name
         tableName = tableName.split(" ")[0]
         fileName = os.path.join(workingDirectory, tableName)
         if os.path.isfile(fileName):
             with open(fileName, "r+") as table:
                 data = table.readlines()
-                out = list(data)  # Can't modify data of for loop below
-                colIndex = data[0].split(" | ")
-                for x in range(len(colIndex)):
-                    colIndex[x] = colIndex[x].split(" ")[0]
-                itemToDelete = command.split("WHERE ")[1]
-                if "=" in itemToDelete:  # Figure out the operator for splitting command
-                    relColumn = itemToDelete.split(" =")[0]
-                    itemToDelete = itemToDelete.split("= ")[1]
-                    if "\"" in itemToDelete or "\'" in itemToDelete:  # Cleanup var
-                        itemToDelete = itemToDelete[1:-1]
-                    for line in data:  # Check each row
-                        lineCheck = line.split(" | ")
-                        for x in range(len(lineCheck)):  # Check each column item
-                            lineCheck[x] = lineCheck[x].split(" ")[0]
-                        if itemToDelete in lineCheck:
-                            colIndex = colIndex.index(relColumn)
-                            lineCheck = lineCheck.index(itemToDelete)
-                            if lineCheck == colIndex:  # Check for proper column
-                                del out[out.index(line)]  # Remove matched field
-                                mainCount += 1
-                                # print "DEBUG out: ", out
-                elif ">" in itemToDelete:  # Figure out the operator for splitting command
-                    relColumn = itemToDelete.split(" >")[0]
-                    itemToDelete = itemToDelete.split("> ")[1]
-                    for line in data:  # Check each row
-                        lineCheck = line.split(" | ")
-                        for x in range(len(lineCheck)):  # Check each column item
-                            lineCheck[x] = lineCheck[x].split(" ")[0]
-                            try:
-                                lineCheck[x] = float(lineCheck[x])  # Only check numeric fields
-                                # lineCheck[x] = int(lineCheck[x])
-                                if lineCheck[x] > float(itemToDelete):  # Match query
-                                    tempColIndex = colIndex.index(relColumn)
-                                    # print "x: ", x, " colIndex: ", colIndex, " mainIndex: ", data.index(line)
-                                    if x == tempColIndex:  # Check for proper column
-                                        del out[out.index(line)]  # Remove matched field
-                                        mainCount += 1
-                            except ValueError:
-                                continue
 
-                # elif "<" in itemToDelete: # Future implementation #
-                # relColumn = itemToDelete.split("<")[0]
-                # itemToDelete = itemToDelete.split("< ")[1]
+                itemToDelete = command.split("WHERE ")[1]
+                # rip code
+                mainCount, out = where(itemToDelete, "delete", data)
                 table.seek(0)
                 table.truncate()
+
                 for line in out:
                     table.write(line)
-                if mainCount == 1:
-                    print "1 record deleted."
-                elif mainCount > 1:
+
+                if mainCount > 0:
                     print mainCount, " records deleted."
                 else:
                     print "No records deleted."
@@ -285,6 +291,117 @@ def deleteFrom(command):
         print "!Failed to alter Table because no table name is specified"
     except ValueError as err:
         print err.args[0]
+
+
+
+def updateFrom(command):
+    try:
+        print "Update"
+        useEnabled()  # Ensure database is selected
+        commandUpper = command.upper()
+        tableName = command.split("UPDATE ")[1]  # Get string to use for table name
+        tableName = tableName.split("SET")[0]
+        tableName = tableName.lower()
+        fileName = os.path.join(workingDirectory, tableName)
+        if os.path.isfile(fileName):
+            with open(fileName, "r+") as table:
+                data = table.readlines()
+
+                itemToUpdate = command.split("WHERE ")[1]
+                setValue = command.split("SET ")[1]
+                setValue = setValue.split("WHERE ")[0]
+                mainCount, out = where(itemToUpdate, "update", data, setValue)
+                table.seek(0)
+                table.truncate()
+
+                for line in out:
+                    table.write(line)
+
+                if mainCount > 0:
+                    print mainCount, " records updated."
+                else:
+                    print "No records updated."
+        else:
+            print "!Failed to alter table " + tableName + " because it does not exist"
+
+    except IndexError:
+        print "!Failed to alter Table because no table name is specified"
+    #except ValueError as err:
+    #    print err.args[0]
+
+
+def returnColIndex(data):
+    colIndex = data[0].split(" | ")
+    for x in range(len(colIndex)):
+        colIndex[x] = colIndex[x].split(" ")[0]
+    return colIndex
+
+
+def where(argumentToFind, actionToApply, data, updateValue = ""):
+    mainCount = 0
+    colIndex = returnColIndex(data)
+    colNames = colIndex
+    inData = list(data)
+    out = []
+    if "=" in argumentToFind:  # Figure out the operator for splitting command
+        relColumn = argumentToFind.split(" =")[0]
+        argumentToFind = argumentToFind.split("= ")[1]
+        if "\"" in argumentToFind or "\'" in argumentToFind:  # Cleanup var
+            argumentToFind = argumentToFind[1:-1]
+        for line in data:
+            lineCheck = splitLines(line)
+            if argumentToFind in lineCheck:
+                colIndex = colNames.index(relColumn)
+                lineIndex = lineCheck.index(argumentToFind)
+                if lineIndex == colIndex:  # Check for proper column
+                    if actionToApply == "delete":
+                        del inData[inData.index(line)]  # Remove matched field
+                        out = inData
+                        mainCount += 1
+                    if actionToApply == "select":
+                        out.append(inData[inData.index(line)])
+                    if actionToApply == "update":
+                        attribute, field = updateValue.split(" = ")
+                        if attribute in colNames:
+                            splitLine = splitLines(line)
+                            splitLine[colNames.index(attribute)] = field
+                            inData[inData.index(line)] = (' | ').join(splitLine)
+                            out = inData
+                            mainCount += 1
+
+    elif ">" in argumentToFind:  # Figure out the operator for splitting command
+        relColumn = argumentToFind.split(" >")[0]
+        argumentToFind = argumentToFind.split("> ")[1]
+        for line in data:  # Check each row
+            lineCheck = line.split(" | ")
+            for x in range(len(lineCheck)):  # Check each column item
+                lineCheck[x] = lineCheck[x].split(" ")[0]
+                try:
+                    lineCheck[x] = float(lineCheck[x])  # Only check numeric fields
+                    # lineCheck[x] = int(lineCheck[x])
+                    if lineCheck[x] > float(argumentToFind):  # Match query
+                        tempColIndex = colIndex.index(relColumn)
+                        # print "x: ", x, " colIndex: ", colIndex, " mainIndex: ", data.index(line)
+                        if x == tempColIndex:  # Check for proper column
+                            if actionToApply == "delete":
+                                del inData[inData.index(line)]  # Remove matched field
+                                out = inData
+                                mainCount += 1
+                            if actionToApply == "select":
+                                out.append(inData[inData.index(line)])
+                            if actionToApply == "update":
+                                print "hi"
+
+                except ValueError:
+                    continue
+    return mainCount, out
+
+
+def splitLines(line):
+    lineCheck = line.split(" | ")
+    for x in range(len(lineCheck)):  # Check each column item
+        lineCheck[x] = lineCheck[x].split(" ")[0]
+    return lineCheck
 
 
 if __name__ == '__main__':
