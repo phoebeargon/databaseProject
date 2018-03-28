@@ -57,11 +57,11 @@ def main():
                 use_db(command)
 
             elif ".EXIT" in command:  # Exit database if specified
-                print "All done"
+                print "All done."
                 exit()
 
     except (EOFError, KeyboardInterrupt) as e:  # Exit script
-        print "\n Database connection terminated -- exiting gracefully"
+        print "\n All done."
 
 
 # Helper Functions
@@ -102,7 +102,7 @@ def where(search_arg, action, data, up_val=""):
         else:
             r_col = search_arg.split(" =")[0]
 
-            search_arg = search_arg.split("= ")[1]
+        search_arg = search_arg.split("= ")[1]
         if "\"" in search_arg or "\'" in search_arg:
             search_arg = search_arg[1:-1]
         for line in data:
@@ -289,7 +289,7 @@ def insert_into(input):
                             out[x] = out[x][1:-1]
                     table.write("\n")
                     table.write(" | ".join(out))  # Output the array to a file
-                    print "1 new record created."
+                    print "1 new record inserted."
             else:
                 print "!Failed to insert into " + table_nm + " because there were no specified arguments"
         else:
@@ -371,9 +371,9 @@ def update_from(input):
                         line += "\n"
                     table.write(line)
                 if counter > 0:
-                    print counter, " records updated."
+                    print counter, " records modified."
                 else:
-                    print "No records updated."
+                    print "No records modified."
         else:
             print "!Failed to update table " + table_nm + " because it does not exist"
     except IndexError:
