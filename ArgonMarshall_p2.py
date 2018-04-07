@@ -190,8 +190,8 @@ def create_db(input):
 def create_table(input):
     try:
         use_enabled()  # Check that database is enabled and selected
-        sub_dir = input.split("CREATE TABLE ")[1]  # Get a string to use for the table name
-        sub_dir = sub_dir.split(" (")[0].lower()
+        sub_dir = re.split("CREATE TABLE ", input, flags=re.IGNORECASE)[1]  # Get a string to use for the table name
+        sub_dir = sub_dir.split("(")[0].lower()
         file_name = os.path.join(workingDirectory, sub_dir)
         if not os.path.isfile(file_name):
             with open(file_name, "w") as table:  # Create a file within folder to act as a table
@@ -302,17 +302,41 @@ def insert_into(input):
 
 def select_in(input, inputUp):
     try:
+        table_array = []
         use_enabled()  # Check that a database is selected
-        table_nm = re.split("FROM ", input, flags=re.IGNORECASE)[1].lower()  # Get string to use for the table name
+        if "JOIN" in inputUp:
+            trimmed_input = re.split("from", input, flags =re.IGNORECASE)[1]
+            #left table will always be [0]
+                if "LEFT" in inputUp:
+                    table_nms.append(re.split("LEFT", trimmed_input, flags=re.IGNORECASE)[0].lower()) #left table
+                    table_nms.append(re.split("JOIN", trimmed_input, flags=re.IGNORECASE)[1].lower()) #right table
+                elif "INNER" in inputUp:
+                    table_nms.append(re.split("INNER", trimmed_input, flags=re.IGNORECASE)[0].lower()) #left table
+                    table_nms.append(re.split("JOIN", trimmed_input, flags=re.IGNORECASE)[1].lower()) #right table
+                elif "RIGHT" in inputUp:
+                    table_nms.append(re.split("RIGHT", trimmed_input, flags=re.IGNORECASE)[0].lower()) #left table
+                    table_nms.append(re.split("JOIN", trimmed_input, flags=re.IGNORECASE)[1].lower()) #right table
+        elif:
+            table_nms = re.split("FROM ", input, flags=re.IGNORECASE)[1].lower()  # Get string to use for the table name
+            if "," in table_nms:
+                for table in re.split(", ", table_nms):
+                    table_array.append(table)
+            else:
+                table_array.append(table_nms)
+
         if "WHERE" in inputUp:
-            table_nm = re.split("WHERE", table_nm, flags=re.IGNORECASE)[0]
+            table_nms = re.split("WHERE", table_nm, flags=re.IGNORECASE)[0]
             if " " in table_nm:
                 table_nm = table_nm.split(" ")[0]
+
         file_nm = os.path.join(workingDirectory, table_nm)
         output = ""
+
         if os.path.isfile(file_nm):
             with open(file_nm, "r+") as table:  # Use r+ since tables are already created
-                if "WHERE" in inputUp:  # Using the where to find the matches with all attributes
+                if "JOIN" in inputUp:
+                    counter, output = join_on(input, inputUp, table_nms)    
+                elif "WHERE" in inputUp:  # Using the where to find the matches with all attributes
                     search_item = re.split("WHERE ", input, flags=re.IGNORECASE)[1]
                     data = table.readlines()
                     counter, output = where(search_item, "select", data)
@@ -349,6 +373,23 @@ def select_in(input, inputUp):
         print "!Failed to select because no table name is specified"
     except ValueError as err:
         print err.args[0]
+
+
+def join_on(input,inputUp):
+
+    toJoinOn = re.split("on", input, flags=re.IGNORECASE)[1]
+
+    if "INNER" in inputUp:
+        return where(toJoinOn, "SELECT", data)
+
+    if "OUTTER" in inputUp:
+        if "LEFT" in inputUp:
+            counter, out = where(toJoinOn, "SELECT", data)
+            for line in data:
+                for matchedData in out:
+                    print "hi"
+        elif "RIGHT" in inputUp:
+            counter, out = where(toJoinOn, "SELECT", data)
 
 
 def update_from(input):
