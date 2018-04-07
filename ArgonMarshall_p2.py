@@ -328,13 +328,14 @@ def select_in(input, inputUp):
             table_nms = re.split("WHERE", table_nm, flags=re.IGNORECASE)[0]
             if " " in table_nm:
                 table_nm = table_nm.split(" ")[0]
-
+        #https://stackoverflow.com/questions/7945182/opening-multiple-an-unspecified-number-of-files-at-once-and-ensuring-they-are
         file_nm = os.path.join(workingDirectory, table_nm)
         output = ""
 
         if os.path.isfile(file_nm):
             with open(file_nm, "r+") as table:  # Use r+ since tables are already created
                 if "JOIN" in inputUp:
+
                     counter, output = join_on(input, inputUp, table_nms)    
                 elif "WHERE" in inputUp:  # Using the where to find the matches with all attributes
                     search_item = re.split("WHERE ", input, flags=re.IGNORECASE)[1]
