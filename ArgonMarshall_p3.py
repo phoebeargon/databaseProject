@@ -7,6 +7,7 @@ CS 457 -- UNR
 
 import os
 import re
+from contextlib import contextmanager #needed for multiple file opening
 
 globalScopeDirectory = ""
 workingDirectory = ""
@@ -17,8 +18,7 @@ def main():
         while True:
             command = ""
             while not ";" in command and not "--" in command:
-                command += raw_input("\n enter a command \n")  # Read input command
-
+                command += raw_input("\n enter a command \n").strip('\r')  # Read input command
             command = command.split(";")[0]  # Remove ; from the command
             command_string = str(command)  # Normalize the command
             command_string = command_string.upper()
@@ -65,6 +65,13 @@ def main():
 
 
 # Helper Functions
+@contextmanager
+def multi_file_manager(files, mode='rt'):
+    """ Open multiple files and make sure they all get closed. """
+    files = [open(file, mode) for file in files]
+    yield files
+    for file in files:
+        file.close()
 
 def use_enabled():  # Catch the error when a database hasn't been enabled
     if globalScopeDirectory is "":
@@ -75,9 +82,10 @@ def use_enabled():  # Catch the error when a database hasn't been enabled
 
 
 def get_column(data):
-    column_index = data[0].split(" | ")
+    column_index = data.split(" | ")
     for x in range(len(column_index)):
         column_index[x] = column_index[x].split(" ")[0]
+
     return column_index
 
 
@@ -88,13 +96,91 @@ def separate(line):
     return line_tester
 
 
+def join_where(search_item, table_varibles, data_array, join_type = 'inner'):
+    
+    counter = 0
+    out = []
+    flag = 0
+    num_tables = len(data_array)
+    matched_data = []
+    empty_cols = ""
+
+    #collect column data in array
+    #check if column data matches
+
+    if "=" in search_item:  # Evaluate operator
+        if "!=" in search_item:
+            r_col = search_item.split(" !=")[0]
+        else:
+            left_search = search_item.split(" =")[0]
+            left_search = left_search.split(".")[1]
+
+        right_search = search_item.split("= ")[1]
+        right_search = right_search.split(".")[1]
+
+
+    if num_tables == 2:
+        left_table = data_array[0]
+        right_table = data_array[1]
+    else:
+        print "!JOIN ONLY ACCEPTS TWO TABLES"
+        return -1, -1
+
+    left_data = []
+    right_data = []
+
+    left_column = get_column(left_table[0])
+    right_column = get_column(right_table[0])
+    
+    for line in left_table:
+    #if not left_search in line:
+        #print line
+        line_seperated = separate(line)
+        left_data.append(line_seperated[left_column.index(left_search)])
+            
+
+    for line in right_table:
+        line_seperated = separate(line)
+        right_data.append(line_seperated[right_column.index(right_search)])
+
+    #both inner and out joins start with matching data
+    for x in range(len(left_data)):
+        for y in range(len(right_data)):
+            if left_data[x] == right_data[y]:
+                right_table[y] = right_table[y].strip('\n')
+                out.append(right_table[y] + ' | ' + left_table[x])
+                counter += 1
+
+                if join_type == 'left':
+                    matched_data.append(left_table[x])
+
+    if join_type == 'left':
+        number_of_data = len(right_column)
+
+        for x in range(number_of_data):
+            empty_cols += ' | '
+
+        for x in range(len(left_data)):
+            if not left_column[0] in left_table[x]: #remove the table key
+
+                if not left_table[x] in matched_data: #dont run unless no matches with this data
+                    out.append(left_table[x].strip('\n') + empty_cols )
+                    counter += 1
+
+    return counter, out
+
+    #attempt = [for data[num_tables]]
+
+
 def where(search_arg, action, data, up_val=""):
+
     counter = 0
     column_index = get_column(data)
     attr_name = column_index
     input_data = list(data)
     out = []
     flag = 0
+
     if "=" in search_arg:  # Evaluate operator
         if "!=" in search_arg:
             r_col = search_arg.split(" !=")[0]
@@ -103,14 +189,18 @@ def where(search_arg, action, data, up_val=""):
             r_col = search_arg.split(" =")[0]
 
         search_arg = search_arg.split("= ")[1]
-        if "\"" in search_arg or "\'" in search_arg:
+
+        if "\"" in search_arg or "\'" in search_arg: #gets rid of \n or \r
             search_arg = search_arg[1:-1]
+
         for line in data:
             line_test = separate(line)
-            if search_arg in line_test:
-                column_index = attr_name.index(r_col)
+
+            if search_arg in line_test: #if matched
+                column_index = attr_name.index(r_col) 
                 line_index = line_test.index(search_arg)
-                if line_index == column_index:  # Check for correct column
+                if line_index == column_index:  #double check if matched field is correct field
+
                     if action == "delete":
                         del input_data[input_data.index(line)]  # Remove matching field
                         out = input_data
@@ -300,76 +390,148 @@ def insert_into(input):
         print err.args[0]
 
 
-def select_in(input, inputUp):
+def select_in(command, inputUp):
     try:
+
         table_array = []
+        table_varibles = []
+        file_nms = []
+        table_lookup = {}
+        table_nms = []
+
         use_enabled()  # Check that a database is selected
+
+        #TableName parsing section
         if "JOIN" in inputUp:
-            trimmed_input = re.split("from", input, flags =re.IGNORECASE)[1]
+            trimmed_input = re.split("FROM ", command, flags =re.IGNORECASE)[1]
             #left table will always be [0]
-                if "LEFT" in inputUp:
-                    table_nms.append(re.split("LEFT", trimmed_input, flags=re.IGNORECASE)[0].lower()) #left table
-                    table_nms.append(re.split("JOIN", trimmed_input, flags=re.IGNORECASE)[1].lower()) #right table
-                elif "INNER" in inputUp:
-                    table_nms.append(re.split("INNER", trimmed_input, flags=re.IGNORECASE)[0].lower()) #left table
-                    table_nms.append(re.split("JOIN", trimmed_input, flags=re.IGNORECASE)[1].lower()) #right table
-                elif "RIGHT" in inputUp:
-                    table_nms.append(re.split("RIGHT", trimmed_input, flags=re.IGNORECASE)[0].lower()) #left table
-                    table_nms.append(re.split("JOIN", trimmed_input, flags=re.IGNORECASE)[1].lower()) #right table
-        elif:
-            table_nms = re.split("FROM ", input, flags=re.IGNORECASE)[1].lower()  # Get string to use for the table name
+            if "LEFT" in inputUp:
+                left_table_name = re.split("LEFT", trimmed_input, flags=re.IGNORECASE)[0].lower()
+                right_table_name = re.split("JOIN ", trimmed_input, flags=re.IGNORECASE)[1].lower()
+                right_table_name = re.split("ON", right_table_name, flags=re.IGNORECASE)[0].strip()
+
+                left_table_name = re.split(" ", left_table_name, flags=re.IGNORECASE)[0].strip()
+                right_table_name = re.split(" ", right_table_name, flags=re.IGNORECASE)[0].strip()
+
+                table_array.append(left_table_name) #left table
+                table_array.append(right_table_name) #right table
+                join_type = 'left'
+
+            elif "INNER" in inputUp:
+                left_table_name = re.split("INNER", trimmed_input, flags=re.IGNORECASE)[0].lower()
+                right_table_name = re.split("JOIN ", trimmed_input, flags=re.IGNORECASE)[1].lower()
+                right_table_name = re.split("ON", right_table_name, flags=re.IGNORECASE)[0].strip()
+
+                left_table_name = re.split(" ", left_table_name, flags=re.IGNORECASE)[0].strip()
+                right_table_name = re.split(" ", right_table_name, flags=re.IGNORECASE)[0].strip()
+
+                table_array.append(left_table_name) #left table
+                join_type = 'inner'
+                table_array.append(right_table_name) #right table
+
+            elif "RIGHT" in inputUp: #Not currently implemented
+                table_array = re.split("RIGHT", trimmed_input, flags=re.IGNORECASE)[0].lower() #left table
+                table_array = re.split("JOIN", trimmed_input, flags=re.IGNORECASE)[1].lower() #right table
+                join_type = 'right'
+        
+        elif "WHERE" in inputUp:
+            table_nms = re.split("FROM ", command, flags=re.IGNORECASE)[1].lower()
+            table_nms = re.split("WHERE", table_nms, flags=re.IGNORECASE)[0]
+
+
+        else: #if not join or where
+            table_nms = re.split("FROM ", command, flags=re.IGNORECASE)[1].lower()  # Get string to use for the table name
             if "," in table_nms:
                 for table in re.split(", ", table_nms):
                     table_array.append(table)
             else:
                 table_array.append(table_nms)
 
-        if "WHERE" in inputUp:
-            table_nms = re.split("WHERE", table_nm, flags=re.IGNORECASE)[0]
-            if " " in table_nm:
-                table_nm = table_nm.split(" ")[0]
+        if " " in table_nms:
+            table_nms = table_nms.strip("\r") #removes any leftover returns
+            table_nms = table_nms.strip() #removes any whitespace
+
+        if "," in table_nms:
+            for table in re.split(", ", table_nms):
+                table, table_varible = re.split(" ", table, flags=re.IGNORECASE) #grab the left table name
+                table_lookup[table_varible] = table
+                table_array.append(table)
+                table_varibles.append(table_varible)
+        #else:
+        #    table_array.append(table_nms)
+
+        #TableName Parsing section for WHERE statements
         #https://stackoverflow.com/questions/7945182/opening-multiple-an-unspecified-number-of-files-at-once-and-ensuring-they-are
-        file_nm = os.path.join(workingDirectory, table_nm)
+        
+        #Loop through every table_nm to make every file path
+        for table_nm in table_array:
+            if table_nm:
+                file_nms.append(os.path.join(workingDirectory, table_nm))
+
         output = ""
 
-        if os.path.isfile(file_nm):
-            with open(file_nm, "r+") as table:  # Use r+ since tables are already created
-                if "JOIN" in inputUp:
+        #File management section
+    #if os.path.isfile(file_nm):
+        with multi_file_manager(file_nms, "r+") as tables:
+        #with open(file_nm, "r+") as table:  # Use r+ since tables are already created
+            data = []
+            data_array = []
 
-                    counter, output = join_on(input, inputUp, table_nms)    
-                elif "WHERE" in inputUp:  # Using the where to find the matches with all attributes
-                    search_item = re.split("WHERE ", input, flags=re.IGNORECASE)[1]
+            #Selection section
+            if "JOIN" in inputUp:
+                for table in tables:
                     data = table.readlines()
+                    data_array.append(data)
+                toJoinOn = re.split("on", command, flags=re.IGNORECASE)[1]
+                counter, output = join_where(toJoinOn, table_varibles, data_array, join_type)
+            #Using the WHERE to find the matches with all attributes
+            elif "WHERE" in inputUp:
+                search_item = re.split("WHERE ", command, flags=re.IGNORECASE)[1]
+                counter = 0
+
+                if len(tables) == 1: #typical where behavior
+                    data = tables[0].readlines()
                     counter, output = where(search_item, "select", data)
+                else: #implicit inner join
+                    for table in tables:
+                        data = table.readlines()
+                        data_array.append(data)
+                        counter += 1
+                    counter, output = join_where(search_item, table_varibles, data_array)
+
+            #Printing Section        
+            if "SELECT *" in inputUp:
+                #Checks if the output is allocated from WHERE
+                if not output == "":  
                     for line in output:
                         print line
-                if "SELECT *" in inputUp:
-                    if not output == "":  # Checks if the output is allocated
-                        for line in output:
-                            print line
-                    else:
-                        output = table.read()
-                        print output
-                else:  # If doesnt want all attributes, trim down output
-                    arguments = re.split("SELECT", input, flags=re.IGNORECASE)[1]
-                    attributes = re.split("FROM", arguments, flags=re.IGNORECASE)[0]
-                    attributes = attributes.split(",")
-                    if not output == "":  # Checks if the output is allocated
-                        lines = output
-                    else:
-                        lines = table.readlines()
-                        data = lines
-                    for line in lines:
-                        out = []
-                        for attribute in attributes:
-                            attribute = attribute.strip()
-                            column_index = get_column(data)
-                            if attribute in column_index:
-                                separated_line = separate(line)
-                                out.append(separated_line[column_index.index(attribute)].strip())
-                        print " | ".join(out)
-        else:
-            print "!Failed to query table " + table_nm + " because it does not exist"
+                #If there is no restriction from WHERE print all
+                else: 
+                    for table in tables:
+                        output += table.read()
+                    print output
+
+            #If doesnt want all attributes, trim down output
+            else:
+                arguments = re.split("SELECT", command, flags=re.IGNORECASE)[1]
+                attributes = re.split("FROM", arguments, flags=re.IGNORECASE)[0]
+                attributes = attributes.split(",")
+                if not output == "":  # Checks if the output is allocated
+                    lines = output
+                else:
+                    lines = table.readlines()
+                    data = lines
+                for line in lines:
+                    out = []
+                    for attribute in attributes:
+                        attribute = attribute.strip()
+                        column_index = get_column(data)
+                        if attribute in column_index:
+                            separated_line = separate(line)
+                            out.append(separated_line[column_index.index(attribute)].strip())
+                    print " | ".join(out)
+    #else:
+    #    print "!Failed to query table " + table_nm + " because it does not exist"
     except IndexError:
         print "!Failed to select because no table name is specified"
     except ValueError as err:
@@ -381,7 +543,7 @@ def join_on(input,inputUp):
     toJoinOn = re.split("on", input, flags=re.IGNORECASE)[1]
 
     if "INNER" in inputUp:
-        return where(toJoinOn, "SELECT", data)
+        return join_where(search_item, table_varibles, data_array)
 
     if "OUTTER" in inputUp:
         if "LEFT" in inputUp:
