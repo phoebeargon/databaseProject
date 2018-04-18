@@ -1,7 +1,7 @@
-CS 457 Programming Assignment 2 -- Design Documentation
+CS 457 Programming Assignment 3 -- Design Documentation
 
 Paul Marshall and Phoebe Argon
-3/27/18
+4/17/18
 
 Design
 ======
@@ -13,11 +13,14 @@ Implementation
 ==============
 The program uses "if" and "elif" statements in the main function to evaluate the input command.
 It will evaluate the input string and then call a separate function to perform the request.
-Since the last project, we have worked to make the program more modular. Rather than having one main function, multiple functions are now called.
+The functions have been separated into "helper" functions and "main program functions".
+Main program functions are functions that are explicitly called from main, and helper functions are called from the main program functions.
+More detailed descriptions of each individual function are listed above the functions, including title, description, and pre and post-conditions.
+Rather than having one main script, multiple functions are now called from main.
 
 All commands must end in ";" to execute properly, unless it is interpreted as a comment.
 Invalid commands will be ignored so that the program does not terminate early.
-The script handles all input no matter lower or uppercase.
+The script handles all input no matter lower or uppercase by normalizing all commands to uppercase before executing.
 For example, users can input "ALTER TABLE" or "alter table" and the program will handle it.
 
 The program executes well by performing several try/catch statements and by performing checks specific to the function.
@@ -26,9 +29,10 @@ For example, a database has to exist before it can be deleted and a table has to
 
 External libraries
 ==================
-The script imports "OS" and "RE" for use in the program.
+The script imports "OS", "RE", and "contextmanager" for use in the program.
 OS helps with modifying files within different selected paths.
 RE handles the case insensitivity.
+contextmanager is used for reading from multiple files to handle the JOIN queries.
 
 
 How to execute
@@ -36,8 +40,8 @@ How to execute
 Preconditions:
     - Access to a linux terminal
     - Python 2 installed on the machine
-    - ArgonMarshall_p2.py and PA2_test.sql are in the same folder
+    - ArgonMarshall_p3.py and PA3_test.sql are in the same folder
 
 In a linux terminal:
-Navigate to the folder containing ArgonMarshall_p2.py and PA2_test.sql
-Type "python ArgonMarshall_p2.py < PA2_test.sql" to execute the script
+Navigate to the folder containing ArgonMarshall_p3.py and PA3_test.sql
+Type "python ArgonMarshall_p3.py < PA3_test.sql" to execute the script
